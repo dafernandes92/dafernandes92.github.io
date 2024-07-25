@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR.js and A-Frame Example</title>
+  <title>Interactive AR.js and A-Frame Example</title>
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 </head>
@@ -9,10 +9,67 @@
   <input id="transparencySlider" type="range" min="0" max="1" step="0.01" value="1">
   <a-scene embedded arjs='sourceType: webcam; video: { facingMode: environment, width: 1280, height: 720 };'>
     <a-marker preset="hiro">
-      <a-entity id="model1" gltf-model="url(untitled.glb)" 
-                scale="0.1 0.1 0.1" position="0 0 0" rotation="0 30 0" material="color: #0066ff; opacity: 1; shader: standard;"></a-entity>
+      <a-entity id="model1" gltf-model="url(mini-model-test1.glb)" 
+                scale="0.1 0.1 0.1" position="0 0 0" rotation="0 30 0"
+                material="color: #0066ff; opacity: 1; shader: standard;"
+                gesture-handler></a-entity>
     </a-marker>
     <a-entity camera></a-entity>
   </a-scene>
+
+  <script>
+    // A-Frame component for handling gestures
+    AFRAME.registerComponent('gesture-handler', {
+      schema: {
+        enabled: {default: true}
+      },
+      init: function () {
+        this.isVisible = false;
+        this.startScale = 1;
+        this.startPosition = {x: 0, y: 0, z: 0};
+        this.startRotation = {x: 0, y: 0, z: 0};
+        this.el.sceneEl.addEventListener('markerFound', () => this.isVisible = true);
+        this.el.sceneEl.addEventListener('markerLost', () => this.isVisible = false);
+
+        // Add event listeners for gestures
+        this.el.sceneEl.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+        this.el.sceneEl.canvas.addEventListener('touchmove', this.onTouchMove.bind(this));
+      },
+      onTouchStart: function (event) {
+        if (!this.isVisible) return;
+        if (event.touches.length === 1) {
+          this.startPosition = {x: this.el.object3D.position.x, y: this.el.object3D.position.y, z: this.el.object3D.position.z};
+        } else if (event.touches.length === 2) {
+          this.startScale = this.el.object3D.scale.x;
+          this.startRotation = {x: this.el.object3D.rotation.x, y: this.el.object3D.rotation.y, z: this.el.object3D.rotation.z};
+        }
+      },
+      onTouchMove: function (event) {
+        if (!this.isVisible) return;
+        if (event.touches.length === 1) {
+          let deltaX = event.touches[0].movementX / window.innerWidth * 2;
+          let deltaY = event.touches[0].movementY / window.innerHeight * 2;
+          this.el.object3D.position.set(this.startPosition.x + deltaX, this.startPosition.y - deltaY, this.startPosition.z);
+        } else if (event.touches.length === 2) {
+          let dist = this.getTouchDistance(event.touches[0], event.touches[1]);
+          let scale = this.startScale * dist / 100;
+          this.el.object3D.scale.set(scale, scale, scale);
+
+          let angle = this.getTouchAngle(event.touches[0], event.touches[1]);
+          this.el.object3D.rotation.set(this.startRotation.x, this.startRotation.y + angle, this.startRotation.z);
+        }
+      },
+      getTouchDistance: function (touch1, touch2) {
+        let dx = touch1.pageX - touch2.pageX;
+        let dy = touch1.pageY - touch2.pageY;
+        return Math.sqrt(dx * dx + dy * dy);
+      },
+      getTouchAngle: function (touch1, touch2) {
+        let dx = touch1.pageX - touch2.pageX;
+        let dy = touch1.pageY - touch2.pageY;
+        return Math.atan2(dy, dx);
+      }
+    });
+  </script>
 </body>
 </html>
